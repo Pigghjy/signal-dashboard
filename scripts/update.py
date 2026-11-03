@@ -1,3 +1,35 @@
+#!/usr/bin/env python3
+"""SIGNAL daily ingestion: RSS + GitHub, optional LLM. Only public feed excerpts are used."""
+import hashlib, html, json, os, re, time
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from urllib.parse import urlsplit
+import feedparser, requests
+from bs4 import BeautifulSoup
+from dateutil import parser as dateparse
+
+ROOT = Path(__file__).resolve().parent.parent
+DATA = ROOT / 'data'
+PUBLIC = ROOT / 'public'
+NOW = datetime.now(timezone.utc)
+HEADERS = {'User-Agent': 'SignalDashboard/1.0 (+https://github.com/Pigghjy/signal-dashboard)', 'Accept': 'application/rss+xml,application/xml,text/xml,*/*'}
+MAX_FEED_ITEMS = 30
+DAYS = 4
+MAX_AI = 35
+
+
+def plain(s):
+    return ' '.join(BeautifulSoup(html.unescape(str(s or '')), 'html.parser').stripped_strings)[:1200]
+
+def valid_url(s):
+    try:
+        u=urlsplit(s)
+        return u.scheme in ('http','https') and bool(u.netloc)
+    except Exception: return False
+
+def read_links(filename):
+    links=[]
+    for line in (ROOT / filename).read_text(encoding='utf-8').splitlines():
         match=re.search(r'https?://[^\s"\'}>]+',line)
         if match and valid_url(match.group()): links.append(match.group())
     return list(dict.fromkeys(links))
