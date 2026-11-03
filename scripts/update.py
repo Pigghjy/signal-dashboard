@@ -183,7 +183,11 @@ def pipeline(channel, files):
             item['category']='tech' if channel=='tech' else ('venture' if re.search('funding|venture|seed round|series [a-f]',text,re.I) else 'macro' if re.search('fed|inflation|cpi|gdp|jobs|rate',text,re.I) else 'equity')
             item['review_status']='keyword_only'
         item['score']=1
-        item['company']=[]
+        
+        item['company'] = extract_companies(
+            item.get('title', ''),
+            item.get('summary', '')
+        )
         result.append(item)
     save('tech_news.json' if channel=='tech' else 'finance_dashboard.json',result,errors)
 
