@@ -93,6 +93,59 @@ def ai_score(channel, articles):
 TECH_RE=re.compile(r'\b(ai|agent|llm|model|open.source|startup|funding|launch|release|app|software|developer|anthropic|openai|google|meta|social|robotics|video|generative|coding|product|venture)\b',re.I)
 FIN_RE=re.compile(r'\b(rate|fed|inflation|cpi|gdp|jobs|unemployment|merger|acquisition|investment|funding|ipo|earnings|guidance|venture|seed round|series [a-f]|policy|economy)\b',re.I)
 
+# 自动识别新闻中的公司、品牌与组织
+COMPANY_ALIASES = {
+    "OpenAI": ["OpenAI", "ChatGPT"],
+    "Google": ["Google", "Alphabet", "Gemini", "DeepMind"],
+    "Microsoft": ["Microsoft", "Azure", "Copilot"],
+    "Meta": ["Meta", "Facebook", "Instagram", "WhatsApp"],
+    "Apple": ["Apple", "iPhone", "iPad", "MacBook"],
+    "Amazon": ["Amazon", "AWS"],
+    "NVIDIA": ["NVIDIA", "Nvidia", "GeForce"],
+    "Anthropic": ["Anthropic", "Claude"],
+    "Tesla": ["Tesla"],
+    "ByteDance": ["ByteDance", "TikTok", "字节跳动", "抖音"],
+    "Tencent": ["Tencent", "WeChat", "腾讯", "微信"],
+    "Alibaba": ["Alibaba", "AliExpress", "阿里巴巴", "阿里云"],
+    "Baidu": ["Baidu", "百度", "文心"],
+    "DeepSeek": ["DeepSeek"],
+    "xAI": ["xAI", "Grok"],
+    "AMD": ["AMD", "Ryzen"],
+    "Intel": ["Intel"],
+    "Samsung": ["Samsung", "Galaxy"],
+    "Notion": ["Notion"],
+    "Adobe": ["Adobe", "Photoshop"],
+    "Salesforce": ["Salesforce", "Slack"],
+    "Spotify": ["Spotify"],
+    "Netflix": ["Netflix"],
+    "Reddit": ["Reddit"],
+    "Uber": ["Uber"],
+    "Airbnb": ["Airbnb"],
+    "SpaceX": ["SpaceX", "Starlink"],
+}
+
+def extract_companies(title, summary):
+    # 标题优先；摘要只用于补充
+    title = str(title or '')
+    summary = str(summary or '')
+    result = []
+
+    for company, aliases in COMPANY_ALIASES.items():
+        for alias in aliases:
+            pattern = (
+                r'(?<![A-Za-z0-9])'
+                + re.escape(alias)
+                + r'(?![A-Za-z0-9])'
+            )
+            if (
+                re.search(pattern, title, re.I)
+                or re.search(pattern, summary, re.I)
+            ):
+                result.append(company)
+                break
+
+    return result
+
 def pipeline(channel, files):
     raw={};errors=[];cutoff=NOW-timedelta(days=DAYS)
     for file in files:
