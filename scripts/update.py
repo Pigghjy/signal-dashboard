@@ -64,7 +64,24 @@ def ai_score(channel, articles):
             guide=('科技：保留 AI 模型/开源/互联网软件产品更新/新创融资/战略合作；过滤普通财报、监管、传统重资产、空泛观点。'
               if channel=='tech' else
               '财经：保留重要宏观政策/经济数据、股票基本面重大变动及有实质的新创融资；过滤纯股价噪音、重复评论、无信息的观点。')
-            prompt=f'你是严谨的新闻筛选助手。只根据标题与RSS摘要判断，不要补充任何未给出的事实。{guide}\n输出 JSON object，仅包含 score (0或1)、brief (不超过55字中文)、reason (一句话中文)、category (财经限macro/equity/venture/other)、priority (整数1-3)。信息不足 score 0。\n新闻：'+json.dumps({'title':item['title'],'summary':item['summary']},ensure_ascii=False)
+            prompt== (
+    "你是专业的全球新闻编辑。只允许根据提供的新闻标题和RSS摘要写作，"
+    "不得编造数字、人物、事件背景或影响。"
+    "输出JSON对象，包含："
+    "score（0或1）、title_zh（准确的中文标题）、"
+    "brief（80-120字中文摘要，信息不足则简短描述）、"
+    "details（有足够信息时提炼2-3个要点，否则为空字符串）、"
+    "reason（一句话中文筛选理由）、"
+    "category（财经限macro/equity/venture/other）、"
+    "priority（1-3的整数）。"
+    "保留公司与产品英文专有名称。"
+    "信息不足以确认新闻事件时score为0。"
+    f"{guide}\n新闻："
+    + json.dumps(
+        {"title": item["title"], "summary": item["summary"]},
+        ensure_ascii=False
+    )
+)
             response=client.chat.completions.create(model=os.getenv('OPENAI_MODEL','gpt-4.1-mini'),messages=[{'role':'user','content':prompt}],response_format={'type':'json_object'},temperature=0)
             d=json.loads(response.choices[0].message.content)
             out[item['item_id']]=d
@@ -97,6 +114,10 @@ def pipeline(channel, files):
         if a:
             if int(a.get('score',0))!=1:continue
             item['brief']=str(a.get('brief') or item['summary'] or item['title'])
+            item['title_zh'] = ''
+            item['details'] = ''
+            item['title_zh'] = str(a.get('title_zh') or '')
+            item['details'] = str(a.get('details') or '')
             item['reason']=str(a.get('reason',''))
             item['priority']=max(1,min(3,int(a.get('priority',1))))
             item['category']=str(a.get('category','other')) if channel=='finance' else 'tech'
@@ -110,7 +131,6 @@ def pipeline(channel, files):
             item['review_status']='keyword_only'
         item['score']=1
         item['company']=[]
-        item['details']=''  # no article body; do not hallucinate or claim extraction
         result.append(item)
     save('tech_news.json' if channel=='tech' else 'finance_dashboard.json',result,errors)
 
